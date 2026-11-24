@@ -59,8 +59,15 @@ gallery -> worst failures per family with every model's answer
 - `tests/` has 19 tests: geometry on hand-built maps, the pixel round-trip on 60 maps × 2 styles, verification of a
   generated set, byte-level determinism, the scoring parser, and **five mutation tests** (flipped answer key,
   erased doorway pixels, erased goal, swapped goal labels, flipped heading). Every mutation is caught.
-- `outputs/verification_report.json`: all 944 tasks re-verified from their PNGs, with 0 failures.
-- `outputs/generation_report.json`: 2,385 rejected candidates, counted by reason.
+- `outputs/verification_report.json`: all 1,407 tasks re-verified from their PNGs, with 0 failures.
+- `outputs/generation_report.json`: every rejected candidate, counted by reason.
+- Cross-platform repeatability: `docker run navprobe make all` (Linux) reproduced `tasks.jsonl` and all 1,407 images
+  byte-for-byte identical to the macOS run.
+- Human audit: 60 base tasks (10 per family, fixed seed) answered by a person from the image alone
+  (`python -m navprobe.audit`); reported as the `human_audit` row.
+- Confound check: style, answer letter and F5 trap status are scheduled independently (v1.1). An earlier v1.0
+  schedule correlated style with answer letter inside the F5 trap groups, which a blind model could exploit. It was
+  found through the blind control and fixed before the final runs.
 - `outputs/results/summary.json`: oracle 100%, random at chance.
 - Manual fixes: **none.** Nothing was hand-edited (see `MANUAL_FIXES.md`).
 
@@ -70,8 +77,8 @@ pytest. Models are served with vLLM (fallback: Hugging Face transformers). No ex
 every map is generated.
 
 ## 7. Models evaluated
-Open-weight VLMs served on Plaksha HPC (NVIDIA RTX PRO 6000 Blackwell MIG slices), temperature 0, maximum 256
-new tokens, one image per prompt:
+Open-weight VLMs served on an institutional GPU cluster (NVIDIA RTX PRO 6000 Blackwell MIG slices), temperature 0, maximum 2,048
+new tokens (enough for models that reason before answering), one image per prompt:
 Qwen2.5-VL 3B / 7B / 72B-AWQ, Qwen3-VL 4B / 8B / 32B-FP8, InternVL3.5 8B. Each model is also run
 **blind** (same prompt, no image) on the base tasks.
 

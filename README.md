@@ -19,6 +19,8 @@ or with Docker:
 docker build -t navprobe . && docker run --rm -v "$PWD/outputs:/app/outputs" navprobe
 ```
 The same seed always produces byte-identical images and tasks (`tests/test_pipeline.py::test_deterministic`).
+Checked across operating systems: running `make all` inside the Docker image (Linux) reproduced `tasks.jsonl`
+and all 1,407 PNGs **byte-for-byte** identical to the macOS run (7 min 21 s end to end).
 
 ## What a task looks like
 Each task is a PNG map, a question, a fixed answer format and the exact answer, plus the evidence used.
@@ -28,6 +30,29 @@ Each task is a PNG map, a question, a fixed answer format and the exact answer, 
  "answer": "B",
  "evidence": {"path_len": {"A": 41, "B": 29, "C": 37}, "straight_line_nearest": "A", "trap": true}}
 ```
+
+## Results (1,407 tasks, exact-match scoring)
+
+| Answered by | Accuracy | No image (blind) | F5: looks-nearest is nearest | F5: trap | Minimal pairs both right |
+|---|---:|---:|---:|---:|---:|
+| Human (60-task audit) | 95% | – | – | – | – |
+| Qwen3-VL 32B (FP8) | 54% | 44% | 88% | 35% | 19% |
+| Qwen2.5-VL 72B (AWQ) | 48% | 44% | 70% | 36% | 18% |
+| Qwen3-VL 4B | 48% | 44% | 70% | 30% | 15% |
+| Qwen3-VL 8B | 47% | 44% | 70% | 35% | 21% |
+| Qwen2.5-VL 7B | 45% | 44% | 49% | 36% | 10% |
+| Qwen2.5-VL 3B | 43% | 43% | 29% | 38% | 9% |
+| InternVL3.5 8B | 33% | 40% | 0% | 0% | 3% |
+| Random guessing | 42% | – | 30% | 40% | 24% |
+
+Key findings:
+- **A person reads these maps; models don't.** Human 95% (about 8 s per task) vs best model 54% (Qwen3-VL 32B); random guessing scores 42%.
+- **Scale barely helps.** Qwen2.5-VL goes 43% → 45% → 48% from 3B to 72B (24x the parameters).
+- **Bigger models eyeball better but don't plan.** On nearest-goal questions, accuracy rises to 88% when the goal that looks nearest is nearest, but stays at chance (30–36%) on traps.
+- **Models ignore the evidence.** Small models score about the same with and without the image, repeat one favourite answer, and get both halves of a minimal pair right at most 21% of the time.
+- InternVL3.5 8B often reasons at length and never reaches an answer within 2,048 tokens (scored as wrong; 47% on the questions it answered).
+
+Full numbers: `outputs/results/summary.json` · figures: `outputs/results/figures/` · failure gallery: `outputs/results/gallery/`. Limitations: [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Six reasoning families
 | Family | Question | Reasoning tested | Why an error matters |

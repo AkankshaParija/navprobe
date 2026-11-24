@@ -79,6 +79,8 @@ def summarize(rows, tasks):
     out["accuracy"] = float(np.mean(acc)) if acc else None
     out["ci95"] = bootstrap_ci(acc)
     out["invalid_rate"] = float(np.mean([not r["valid"] for r in rows])) if rows else None
+    answered = [r["correct"] for r in base if r["valid"]]
+    out["accuracy_on_answered"] = float(np.mean(answered)) if answered else None  # ignores replies with no answer
     fam = {}
     for f in FAMILY_LABEL:
         xs = [r["correct"] for r in base if r["family"] == f]

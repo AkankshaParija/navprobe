@@ -22,7 +22,9 @@ import time
 from pathlib import Path
 
 BLIND_NOTE = "(You are not given the image. Answer with your best guess.)\n\n"
-MAX_NEW_TOKENS = 256
+# Long enough for models that reason step by step before the JSON answer (e.g. InternVL3.5).
+# Models that answer directly stop after a few tokens, so this limit does not change their replies.
+MAX_NEW_TOKENS = int(os.environ.get("NAVPROBE_MAX_TOKENS", 2048))
 
 
 def slug(model: str, blind: bool) -> str:
@@ -58,8 +60,17 @@ class RandomAgent:
 class VLLMAgent:
     def __init__(self, model_id):
         from vllm import LLM, SamplingParams
-        self.llm = LLM(model=model_id, max_model_len=8192, limit_mm_per_prompt={"image": 1},
-                       trust_remote_code=True, seed=0)
+        # Memory knobs (environment variables) only change how the model is served, never the inputs or
+        # decoding: used to fit a 72B model on a 48 GB GPU slice. Defaults suit models up to ~32B.
+        extra = {}
+        if "NAVPROBE_GPU_UTIL" in os.environ:
+            extra["gpu_memory_utilization"] = float(os.environ["NAVPROBE_GPU_UTIL"])
+        if "NAVPROBE_MAX_SEQS" in os.environ:
+            extra["max_num_seqs"] = int(os.environ["NAVPROBE_MAX_SEQS"])
+        if os.environ.get("NAVPROBE_EAGER") == "1":
+            extra["enforce_eager"] = True
+        self.llm = LLM(model=model_id, max_model_len=int(os.environ.get("NAVPROBE_MAX_MODEL_LEN", 8192)),
+                       limit_mm_per_prompt={"image": 1}, trust_remote_code=True, seed=0, **extra)
         self.params = SamplingParams(temperature=0.0, max_tokens=MAX_NEW_TOKENS, seed=0)
 
     def run(self, batch, root, blind):

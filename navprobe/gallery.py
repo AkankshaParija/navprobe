@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .report import FAMILY_LABEL
 
-CONTROLS = {"oracle", "random"}
+CONTROLS = {"oracle", "random", "human_audit"}  # human audit covers only 60 tasks
 TILE = 420
 
 

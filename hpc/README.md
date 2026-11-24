@@ -1,10 +1,10 @@
-# Running NavProbe models on Plaksha HPC
+# Running NavProbe models on a Slurm GPU cluster
 
 Only the model-querying step needs a GPU. Generation, verification and the report run on a laptop.
 
 ## 1. Copy the project (from your Mac)
 ```bash
-rsync -avP --exclude .git ~/Desktop/INTERNSHIPS/hackathon/navprobe/ USER@10.1.45.201:~/navprobe/
+rsync -avP --exclude .git ./ USER@LOGIN-NODE:~/navprobe/
 ```
 
 ## 2. One-time environment (on the login node)
@@ -48,6 +48,6 @@ The course QOS allows 2 jobs at once, so submit 2, wait, then submit the rest.
 
 ## 4. Bring results back (from your Mac)
 ```bash
-rsync -avP USER@10.1.45.201:~/navprobe/outputs/responses/ ~/Desktop/INTERNSHIPS/hackathon/navprobe/outputs/responses/
+rsync -avP USER@LOGIN-NODE:~/navprobe/outputs/responses/ ./outputs/responses/
 cd ~/Desktop/INTERNSHIPS/hackathon/navprobe && make report
 ```
