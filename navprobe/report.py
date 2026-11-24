@@ -128,61 +128,122 @@ def chance_by_family(tasks):
             for f in FAMILY_LABEL if any(t["family"] == f for t in tasks)}
 
 
+INK, GREY, BLUE, ORANGE, TEAL, LIGHT = "#222736", "#5F636E", "#3D6DC4", "#D07A2A", "#009696", "#D9D7D1"
+
+
+def pretty(m: str) -> str:
+    """'vllm_Qwen_Qwen3-VL-32B-Instruct-FP8' -> 'Qwen3-VL 32B'"""
+    if m == "human_audit":
+        return "Human (60-task audit)"
+    if m == "random":
+        return "Random guessing"
+    n = m.replace("vllm_", "").replace("hf_", "").replace("gemini_", "")
+    n = re.sub(r"^(Qwen|OpenGVLab|google)_", "", n)
+    n = re.sub(r"-(Instruct|AWQ|FP8)", "", n).replace("_", ".")
+    n = re.sub(r"-(\d+B)$", r" \1", n)
+    return n
+
+
+def _style(ax):
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.spines["left"].set_color(LIGHT)
+    ax.spines["bottom"].set_color(LIGHT)
+    ax.tick_params(colors=GREY, labelsize=9)
+    ax.title.set_color(INK)
+
+
 def make_figures(summaries, chance, fig_dir: Path):
+    """Clean figures for the README and slides: real models plus human and random; no blind/oracle rows."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig_dir.mkdir(parents=True, exist_ok=True)
-    models = list(summaries)
     fams = [f for f in FAMILY_LABEL if f in chance]
-    # 1. accuracy by family
-    fig, ax = plt.subplots(figsize=(11, 4.5))
+    models = [m for m in summaries if m not in ("oracle", "random", "human_audit") and not m.endswith("__blind")]
+    models.sort(key=lambda m: -summaries[m]["accuracy"])
+
+    # 1. headline: human vs models vs random
+    rows = (["human_audit"] if "human_audit" in summaries else []) + models + ["random"]
+    fig, ax = plt.subplots(figsize=(7.5, 0.42 * len(rows) + 0.9))
+    ys = np.arange(len(rows))[::-1]
+    vals = [summaries[m]["accuracy"] for m in rows]
+    cols = [TEAL if m == "human_audit" else (LIGHT if m == "random" else BLUE) for m in rows]
+    ax.barh(ys, vals, color=cols, height=0.62)
+    for y, v in zip(ys, vals):
+        ax.text(v + 0.01, y, f"{v:.0%}", va="center", fontsize=9, color=INK)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([pretty(m) for m in rows], fontsize=9, color=INK)
+    ax.set_xlim(0, 1.08)
+    ax.xaxis.set_visible(False)
+    ax.set_title("Accuracy on 1,407 verified map-reading tasks", fontsize=11, loc="left")
+    _style(ax)
+    fig.tight_layout()
+    fig.savefig(fig_dir / "accuracy_overall.png", dpi=170)
+    plt.close(fig)
+
+    # 2. accuracy by family (models only, chance marked)
+    fig, ax = plt.subplots(figsize=(10, 4.2))
     w = 0.8 / max(len(models), 1)
+    palette = plt.cm.Blues(np.linspace(0.35, 0.9, len(models)))
     for i, m in enumerate(models):
-        ys = [summaries[m]["by_family"].get(f, {}).get("acc", np.nan) for f in fams]
-        lo = [ys[j] - summaries[m]["by_family"].get(f, {}).get("ci95", (np.nan,) * 2)[0] for j, f in enumerate(fams)]
-        hi = [summaries[m]["by_family"].get(f, {}).get("ci95", (np.nan,) * 2)[1] - ys[j] for j, f in enumerate(fams)]
-        ax.bar(np.arange(len(fams)) + i * w, ys, w, yerr=[lo, hi], capsize=2, label=m)
+        ys_ = [summaries[m]["by_family"].get(f, {}).get("acc", np.nan) for f in fams]
+        ax.bar(np.arange(len(fams)) + i * w, ys_, w, label=pretty(m), color=palette[i])
     for j, f in enumerate(fams):
-        ax.hlines(chance[f], j - 0.1, j + 0.8, colors="k", linestyles="dashed", linewidth=1)
+        ax.hlines(chance[f], j - 0.05, j + 0.8, colors=ORANGE, linestyles="dashed", linewidth=1.2)
     ax.set_xticks(np.arange(len(fams)) + 0.4 - w / 2)
-    ax.set_xticklabels([FAMILY_LABEL[f] for f in fams], fontsize=9)
-    ax.set_ylim(0, 1.05)
-    ax.set_ylabel("accuracy (base tasks, 95% CI)")
-    ax.set_title("Accuracy by reasoning family (dashed = chance)")
-    ax.legend(fontsize=8, ncol=2)
+    ax.set_xticklabels([FAMILY_LABEL[f] for f in fams], fontsize=9, color=INK)
+    ax.set_ylim(0, 1.0)
+    ax.set_ylabel("accuracy", color=GREY)
+    ax.set_title("Accuracy by reasoning family (orange dashes = chance)", fontsize=11, loc="left")
+    ax.legend(fontsize=8, ncol=1, frameon=False, bbox_to_anchor=(1.01, 1), loc="upper left")
+    _style(ax)
     fig.tight_layout()
-    fig.savefig(fig_dir / "accuracy_by_family.png", dpi=150)
+    fig.savefig(fig_dir / "accuracy_by_family.png", dpi=170)
     plt.close(fig)
-    # 2. accuracy vs map size
-    fig, ax = plt.subplots(figsize=(6, 4))
-    for m in models:
+
+    # 3. accuracy vs map size
+    fig, ax = plt.subplots(figsize=(7, 3.8))
+    for i, m in enumerate(models):
         s = summaries[m]["by_size"]
-        ax.plot([int(k) for k in s], list(s.values()), marker="o", label=m)
-    ax.set_xlabel("map size (cells per side)")
-    ax.set_ylabel("accuracy")
-    ax.set_ylim(0, 1.05)
-    ax.set_title("Accuracy as maps get larger")
-    ax.legend(fontsize=8)
+        ax.plot([int(k) for k in s], list(s.values()), marker="o", label=pretty(m), color=palette[i])
+    ax.axhline(summaries["random"]["accuracy"], color=ORANGE, linestyle="dashed", linewidth=1.2)
+    ax.set_xlabel("map size (cells per side)", color=GREY)
+    ax.set_ylim(0.2, 0.8)
+    ax.set_title("Accuracy vs map size (orange = random guessing)", fontsize=11, loc="left")
+    ax.legend(fontsize=8, frameon=False, bbox_to_anchor=(1.01, 1), loc="upper left")
+    _style(ax)
     fig.tight_layout()
-    fig.savefig(fig_dir / "accuracy_by_size.png", dpi=150)
+    fig.savefig(fig_dir / "accuracy_by_size.png", dpi=170)
     plt.close(fig)
-    # 3. F5 trap
-    ms = [m for m in models if "F5_trap" in summaries[m]]
+
+    # 4. F5 traps: eyeballing vs planning
+    ms = [m for m in models if "F5_trap" in summaries[m] and summaries[m].get("accuracy_on_answered")
+          and summaries[m]["by_family"].get("F5_nearest_by_path", {}).get("acc", 0) > 0]
+    ms.sort(key=lambda m: summaries[m]["F5_trap"]["no_trap_acc"])
     if ms:
-        fig, ax = plt.subplots(figsize=(7, 4))
+        fig, ax = plt.subplots(figsize=(8, 3.9))
         x = np.arange(len(ms))
-        ax.bar(x - 0.2, [summaries[m]["F5_trap"]["no_trap_acc"] for m in ms], 0.4, label="looks-nearest = nearest")
-        ax.bar(x + 0.2, [summaries[m]["F5_trap"]["trap_acc"] for m in ms], 0.4, label="trap: looks-nearest is wrong")
-        ax.axhline(1 / 3, color="k", linestyle="dashed", linewidth=1)
+        a = [summaries[m]["F5_trap"]["no_trap_acc"] for m in ms]
+        b = [summaries[m]["F5_trap"]["trap_acc"] for m in ms]
+        ax.bar(x - 0.2, a, 0.4, label="goal that looks nearest IS nearest", color=BLUE)
+        ax.bar(x + 0.2, b, 0.4, label="trap: goal that looks nearest is NOT", color=ORANGE)
+        for xi, (va, vb) in enumerate(zip(a, b)):
+            ax.text(xi - 0.2, va + 0.015, f"{va:.0%}", ha="center", fontsize=8, color=INK)
+            ax.text(xi + 0.2, vb + 0.015, f"{vb:.0%}", ha="center", fontsize=8, color=INK)
+        ax.axhline(1 / 3, color=GREY, linestyle="dashed", linewidth=1)
+        ax.text(-0.55, 1 / 3 - 0.045, "chance", fontsize=8, color=GREY, ha="left")
         ax.set_xticks(x)
-        ax.set_xticklabels(ms, rotation=20, ha="right", fontsize=8)
-        ax.set_ylim(0, 1.05)
-        ax.set_title("F5: do models plan, or eyeball straight-line distance?")
-        ax.legend(fontsize=8)
+        ax.set_xticklabels([pretty(m) for m in ms], fontsize=9, color=INK)
+        ax.set_ylim(0, 1.0)
+        ax.yaxis.set_visible(False)
+        ax.set_title("Nearest-goal questions: models eyeball distance, they don't plan routes",
+                     fontsize=11, loc="left")
+        ax.legend(fontsize=8, frameon=False, loc="upper left")
+        _style(ax)
         fig.tight_layout()
-        fig.savefig(fig_dir / "f5_trap.png", dpi=150)
+        fig.savefig(fig_dir / "f5_trap.png", dpi=170)
         plt.close(fig)
 
 

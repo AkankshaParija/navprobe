@@ -164,6 +164,22 @@ def make_agent(spec: str):
     raise SystemExit(f"unknown model spec {spec!r}")
 
 
+def balanced_subset(tasks, per_family):
+    """Deterministic subset of base tasks: per family, round-robin over (answer, trap) groups so the
+    subset keeps balanced answers and the F5 trap split. Used for rate-limited APIs (e.g. a free tier)."""
+    import itertools
+    base = sorted((t for t in tasks if not t.get("pair_role") and not t.get("twin_role")), key=lambda t: t["task_id"])
+    out = []
+    for fam in sorted({t["family"] for t in base}):
+        groups = {}
+        for t in base:
+            if t["family"] == fam:
+                groups.setdefault((t["answer"], t["evidence"].get("trap")), []).append(t)
+        rr = [t for tup in itertools.zip_longest(*groups.values()) for t in tup if t is not None]
+        out += rr[:per_family]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tasks", default="outputs")
@@ -171,10 +187,14 @@ def main():
     ap.add_argument("--blind", action="store_true", help="send the question without the image")
     ap.add_argument("--limit", type=int, default=0, help="only the first N tasks (smoke test)")
     ap.add_argument("--base-only", action="store_true", help="skip minimal-pair partners and style twins")
+    ap.add_argument("--per-family", type=int, default=0,
+                    help="balanced subset of N base tasks per family (for rate-limited APIs)")
     a = ap.parse_args()
 
     root = Path(a.tasks)
     tasks = load_tasks(root)
+    if a.per_family:
+        tasks = balanced_subset(tasks, a.per_family)
     if a.base_only:
         tasks = [t for t in tasks if not t.get("pair_role") and not t.get("twin_role")]
     if a.limit:

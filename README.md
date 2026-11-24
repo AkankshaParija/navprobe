@@ -12,7 +12,7 @@ answer is visible in the image, and scores models against controls.
 ## Quick start (offline, no GPU, no API key)
 ```bash
 pip install -r requirements.txt
-make all          # tests -> generate 600+ tasks -> verify from pixels -> oracle/random controls -> report
+make all          # tests -> generate 1,407 tasks -> verify from pixels -> oracle/random controls -> report
 ```
 or with Docker:
 ```bash
@@ -24,14 +24,25 @@ and all 1,407 PNGs **byte-for-byte** identical to the macOS run (7 min 21 s end 
 
 ## What a task looks like
 Each task is a PNG map, a question, a fixed answer format and the exact answer, plus the evidence used.
+
+<table>
+<tr>
+<td align="center"><img src="outputs/images/F5-e0008.png" width="260"><br><sub><b>Trap question.</b> Which goal is closest by driving?<br>Answer <b>C</b> (16 steps). B looks closest but is behind closed doors (29 steps).<br>6 of 7 models answered B.</sub></td>
+<td align="center"><img src="outputs/images/F3-s0000.png" width="260"><br><sub><b>Minimal pair, part 1.</b> Can the robot reach A? <b>Yes</b>.</sub></td>
+<td align="center"><img src="outputs/images/F3-s0000P.png" width="260"><br><sub><b>Minimal pair, part 2.</b> Same map, one door closed: <b>No</b>.</sub></td>
+</tr>
+</table>
+
 ```json
-{"task_id": "F5-00412", "family": "F5_nearest_by_path", "style": "plan", "size": 28,
+{"task_id": "F5-e0008", "family": "F5_nearest_by_path", "style": "ros", "size": 14,
  "question": "Which goal is closest to the robot by DRIVING distance, not straight-line distance?",
- "answer": "B",
- "evidence": {"path_len": {"A": 41, "B": 29, "C": 37}, "straight_line_nearest": "A", "trap": true}}
+ "answer": "C",
+ "evidence": {"path_len": {"A": 23, "B": 29, "C": 16}, "straight_line_nearest": "B", "trap": true}}
 ```
 
 ## Results (1,407 tasks, exact-match scoring)
+
+<img src="outputs/results/figures/accuracy_overall.png" width="620">
 
 | Answered by | Accuracy | No image (blind) | F5: looks-nearest is nearest | F5: trap | Minimal pairs both right |
 |---|---:|---:|---:|---:|---:|
@@ -50,9 +61,11 @@ Key findings:
 - **Scale barely helps.** Qwen2.5-VL goes 43% → 45% → 48% from 3B to 72B (24x the parameters).
 - **Bigger models eyeball better but don't plan.** On nearest-goal questions, accuracy rises to 88% when the goal that looks nearest is nearest, but stays at chance (30–36%) on traps.
 - **Models ignore the evidence.** Small models score about the same with and without the image, repeat one favourite answer, and get both halves of a minimal pair right at most 21% of the time.
+<img src="outputs/results/figures/f5_trap.png" width="700">
+
 - InternVL3.5 8B often reasons at length and never reaches an answer within 2,048 tokens (scored as wrong; 47% on the questions it answered).
 
-Full numbers: `outputs/results/summary.json` · figures: `outputs/results/figures/` · failure gallery: `outputs/results/gallery/`. Limitations: [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+More: [full numbers (summary.json)](outputs/results/summary.json) · [all figures](outputs/results/figures/) · [failure gallery](outputs/results/gallery/gallery.md) · [human audit page](outputs/audit/audit.html) · [technical explanation](docs/TECHNICAL.md) · [limitations](docs/LIMITATIONS.md) · [verification report](outputs/verification_report.json)
 
 ## Six reasoning families
 | Family | Question | Reasoning tested | Why an error matters |
@@ -72,11 +85,13 @@ Full numbers: `outputs/results/summary.json` · figures: `outputs/results/figure
    goals within 30 degrees of straight ahead or behind, sight lines that graze a corner, and doorways that the robot exactly fits.
 4. **Balanced answers.** Every family's base tasks are balanced across answer choices.
 5. **Controls.** Oracle (reads the key) = 100%, random = chance, blind (text only, no image) ≈ chance.
-6. **Mutation tests.** Flipped answer keys, erased doorways, moved goals, swapped labels and flipped headings
+6. **Human audit.** A person answered 60 random tasks (10 per family) from the image alone: 95%. All three misses were
+   undercounted doorways next to wall corners; the answer key was re-checked by hand and is correct.
+7. **Mutation tests.** Flipped answer keys, erased doorways, moved goals, swapped labels and flipped headings
    are all caught (`tests/test_pipeline.py`).
 
 ## Variation, beyond rewording
-- Six families covering different kinds of reasoning, at three map sizes (20, 28, 36 cells per side).
+- Six families covering different kinds of reasoning, at four map sizes (an easy 14-cell tier, then 20, 28, 36 cells per side).
 - **Minimal pairs:** the same map with one change (one door closed, heading reversed, smaller robot) that flips the answer.
 - **Trap questions (F5):** in half the tasks, the goal that *looks* nearest is not the nearest by path.
 - **Style twins:** the same scene in two visual styles (architectural plan and ROS occupancy grid).
@@ -88,9 +103,9 @@ so runs resume after interruption and the report can be rebuilt offline.
 ## Repository layout
 ```
 navprobe/  mapgen.py  geometry.py  render.py  decode.py  families.py
-           generate.py  verify.py  evaluate.py  report.py
+           generate.py  verify.py  evaluate.py  report.py  gallery.py  audit.py
 tests/     geometry, pipeline (round-trip, determinism, mutations), scoring
 hpc/       Slurm script + instructions
 outputs/   tasks.jsonl, images/, generation_report.json, verification_report.json,
-           responses/ (cached model replies), results/ (summary, figures)
+           responses/ (cached model replies), results/ (summary, figures, gallery), audit/
 ```
