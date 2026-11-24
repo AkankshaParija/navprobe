@@ -1,0 +1,53 @@
+{
+  "answer_balance_base_tasks": {
+    "F1_count_doors": {
+      "counts": {
+        "1": 42,
+        "2": 42,
+        "3": 41,
+        "4": 25
+      },
+      "max_share": 0.28
+    },
+    "F2_direction": {
+      "counts": {
+        "left": 75,
+        "right": 75
+      },
+      "max_share": 0.5
+    },
+    "F3_reachability": {
+      "counts": {
+        "no": 75,
+        "yes": 75
+      },
+      "max_share": 0.5
+    },
+    "F4_fit": {
+      "counts": {
+        "no": 75,
+        "yes": 75
+      },
+      "max_share": 0.5
+    },
+    "F5_nearest_by_path": {
+      "counts": {
+        "A": 51,
+        "B": 50,
+        "C": 49
+      },
+      "max_share": 0.34
+    },
+    "F6_line_of_sight": {
+      "counts": {
+        "blocked": 75,
+        "visible": 75
+      },
+      "max_share": 0.5
+    }
+  },
+  "duplicate_ids": 0,
+  "failures": {},
+  "n_tasks": 1407,
+  "n_valid": 1407
+}

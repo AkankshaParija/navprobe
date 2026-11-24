@@ -1,0 +1,6 @@
+# Only needed to query models (HPC / API). Not needed to generate, verify or report.
+vllm>=0.8
+transformers>=4.57
+accelerate
+qwen-vl-utils
+requests

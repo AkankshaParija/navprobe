@@ -1,0 +1,64 @@
+{
+  "answers": {
+    "F1_count_doors": {
+      "1": 46,
+      "2": 46,
+      "3": 45,
+      "4": 50
+    },
+    "F2_direction": {
+      "left": 150,
+      "right": 187
+    },
+    "F3_reachability": {
+      "no": 172,
+      "yes": 75
+    },
+    "F4_fit": {
+      "no": 112,
+      "yes": 150
+    },
+    "F5_nearest_by_path": {
+      "A": 64,
+      "B": 62,
+      "C": 61
+    },
+    "F6_line_of_sight": {
+      "blocked": 112,
+      "visible": 75
+    }
+  },
+  "by_family": {
+    "F1_count_doors": 187,
+    "F2_direction": 337,
+    "F3_reachability": 247,
+    "F4_fit": 262,
+    "F5_nearest_by_path": 187,
+    "F6_line_of_sight": 187
+  },
+  "generator_version": "1.1.0",
+  "minimal_pairs": 285,
+  "n_tasks": 1407,
+  "per_family": 100,
+  "rejections": {
+    "F1_count_doors:balancing_skip": 605,
+    "F1_count_doors:count_out_of_range": 76,
+    "F2_direction:balancing_skip": 97,
+    "F2_direction:direction_near_ahead_or_behind": 138,
+    "F3_reachability:balancing_skip": 236,
+    "F3_reachability:goal_in_same_room": 70,
+    "F4_fit:balancing_skip": 285,
+    "F4_fit:goal_in_same_room": 71,
+    "F4_fit:pair_not_flipping": 75,
+    "F4_fit:unreachable_even_for_point_robot": 84,
+    "F5_nearest_by_path:balancing_skip": 1943,
+    "F5_nearest_by_path:goal_unreachable": 1472,
+    "F5_nearest_by_path:path_lengths_too_close": 1072,
+    "F6_line_of_sight:balancing_skip": 1384,
+    "F6_line_of_sight:sight_line_grazes_obstacle": 87,
+    "F6_line_of_sight:too_close": 226
+  },
+  "seconds": 266.1,
+  "seed": 0,
+  "style_twins": 222
+}

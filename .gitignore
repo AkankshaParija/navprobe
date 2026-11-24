@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+._*
+logs/
+.venv/
+# outputs/ IS committed on purpose: tasks, images, responses and results are the sample outputs the judges ask for

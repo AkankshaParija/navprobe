@@ -1,0 +1,8 @@
+# model id                          GPU request for run_model.sbatch
+Qwen/Qwen2.5-VL-3B-Instruct         gpu:1g.24gb:1
+Qwen/Qwen3-VL-4B-Instruct           gpu:1g.24gb:1
+Qwen/Qwen3-VL-8B-Instruct           gpu:1g.24gb:1
+Qwen/Qwen2.5-VL-7B-Instruct         gpu:1g.24gb:1
+OpenGVLab/InternVL3_5-8B            gpu:1g.24gb:1
+Qwen/Qwen3-VL-32B-Instruct-FP8      gpu:2g.48gb:1
+Qwen/Qwen2.5-VL-72B-Instruct-AWQ    gpu:2g.48gb:1
